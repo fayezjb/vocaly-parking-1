@@ -2,8 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نظام مواقف حفلة فوكالي لايف</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>نظام مواقف حفلة فوكالي السحابي</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -21,7 +21,14 @@
             --success: #10b981;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+            /* منع تكبير الشاشة اللمسي عند الضغط المتكرر */
+            touch-action: manipulation; 
+        }
         body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Tajawal', sans-serif; padding: 12px; min-height: 100vh; display: flex; flex-direction: column; gap: 12px; }
         
         .loading-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(8,12,20,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; font-weight: bold; color: var(--gold); gap: 15px; }
@@ -44,10 +51,27 @@
         .lot-cap { font-size: 10px; color: var(--text-muted); }
         
         .lot-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .btn-ctrl { flex: 1; height: 38px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; }
+        .btn-ctrl { flex: 1; height: 42px; border: none; border-radius: 6px; font-size: 20px; font-weight: bold; color: #fff; cursor: pointer; user-select: none; }
         .btn-minus { background-color: #1e293b; }
         .btn-plus { background-color: var(--gold); color: #000; }
-        .num-disp { width: 45px; text-align: center; font-size: 16px; font-weight: 700; font-family: 'Poppins', sans-serif; }
+        
+        /* تصميم صندوق الإدخال لكتابة الأرقام بالكيبورد */
+        .num-input { 
+            width: 65px; 
+            height: 42px;
+            background-color: #0d131f;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: #fff;
+            text-align: center; 
+            font-size: 18px; 
+            font-weight: 700; 
+            font-family: 'Poppins', sans-serif; 
+        }
+        /* إخفاء أسهم الـ input الافتراضية لشكل أملس */
+        .num-input::-webkit-outer-spin-button,
+        .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .num-input { -moz-appearance: textfield; }
 
         .chart-box { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; }
         .bar-chart { display: flex; flex-direction: column; gap: 8px; }
@@ -57,7 +81,7 @@
         .chart-fill { height: 100%; background: linear-gradient(90deg, #b38f20, var(--gold)); width: 0%; transition: width 0.3s; }
         .chart-val { width: 35px; text-align: left; font-size: 10px; font-weight: 700; font-family: 'Poppins', sans-serif; }
 
-        .sync-btn { width: 100%; height: 46px; background-color: var(--success); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .sync-btn { width: 100%; height: 50px; background-color: var(--success); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background-color: var(--success); color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 12px; font-weight: bold; transition: transform 0.3s; z-index: 100; }
         .toast.show { transform: translateX(-50%) translateY(0); }
 
@@ -93,7 +117,6 @@
     <div class="toast" id="toast">✓ تم حفظ البيانات سحابياً بنجاح لايف!</div>
 
     <script>
-        // رابط الـ Firebase الخاص بك تم دمجه وتهيئته هنا
         const FIREBASE_URL = "https://vocaly-parking-default-rtdb.firebaseio.com/data.json";
 
         const parkingConfig = {
@@ -128,7 +151,6 @@
                 }
                 renderUI();
             } catch (e) { 
-                console.log("التهيئة الأولى السحابية جاهزة.");
                 renderUI();
             }
             document.getElementById('loading').classList.add('hide');
@@ -137,19 +159,23 @@
         function renderUI() {
             const container = document.getElementById('lotsContainer');
             const chart = document.getElementById('chartContainer');
+            
+            // حفظ الحقول التي في وضع التركيز حالياً لتفادي إغلاق الكيبورد أثناء الكتابة
+            const activeId = document.activeElement ? document.activeElement.dataset.id : null;
+            
             container.innerHTML = ''; chart.innerHTML = '';
             let totalCur = 0, totalCap = 0;
 
             parkingLots.forEach(lot => {
                 totalCur += lot.current; totalCap += lot.capacity;
-                let pct = (lot.current / lot.capacity) * 100;
+                let pct = lot.capacity > 0 ? (lot.current / lot.capacity) * 100 : 0;
 
                 container.insertAdjacentHTML('beforeend', `
                     <div class="lot-card" style="margin-bottom:6px;">
                         <div class="lot-info"><span>${lot.name}</span><span class="lot-cap">السعة: ${lot.capacity}</span></div>
                         <div class="lot-actions">
                             <button class="btn-ctrl btn-minus" onclick="changeVal('${lot.id}', -1)">-</button>
-                            <div class="num-disp">${lot.current}</div>
+                            <input type="number" class="num-input" data-id="${lot.id}" pattern="[0-9]*" inputmode="numeric" value="${lot.current}" oninput="updateInputVal('${lot.id}', this.value)">
                             <button class="btn-ctrl btn-plus" onclick="changeVal('${lot.id}', 1)">+</button>
                         </div>
                     </div>
@@ -166,7 +192,13 @@
 
             document.getElementById('totalCurrent').innerText = totalCur.toLocaleString();
             document.getElementById('totalRemaining').innerText = (totalCap - totalCur).toLocaleString();
-            document.getElementById('totalOccupancy').innerText = ((totalCur / totalCap) * 100).toFixed(1) + '%';
+            document.getElementById('totalOccupancy').innerText = totalCap > 0 ? ((totalCur / totalCap) * 100).toFixed(1) + '%' : '0%';
+
+            // إعادة التركيز للحقل المفتوح لتأمين استمرار الكيبورد مفتوحاً
+            if (activeId) {
+                const inputEl = container.querySelector(`input[data-id="${activeId}"]`);
+                if (inputEl) inputEl.focus();
+            }
         }
 
         function changeVal(id, amt) {
@@ -175,6 +207,39 @@
                 lot.current += amt;
                 renderUI();
             }
+        }
+
+        function updateInputVal(id, val) {
+            let lot = parkingLots.find(l => l.id === id);
+            if(lot) {
+                let num = parseInt(val) || 0;
+                if (num < 0) num = 0;
+                if (num > lot.capacity) num = lot.capacity;
+                lot.current = num;
+                
+                // تحديث الإحصائيات الفوقية والرسوم بدون إعادة بناء الحقول لتلافي مشاكل الكيبورد
+                updateLiveTotalsOnly();
+            }
+        }
+
+        function updateLiveTotalsOnly() {
+            let totalCur = 0, totalCap = 0;
+            parkingLots.forEach(lot => {
+                totalCur += lot.current; totalCap += lot.capacity;
+                let pct = lot.capacity > 0 ? (lot.current / lot.capacity) * 100 : 0;
+                
+                // تحديث البارات الجانبية مباشرة
+                const rows = document.getElementById('chartContainer').children;
+                for(let row of rows) {
+                    if(row.children[0].innerText === lot.id) {
+                        row.children[1].children[0].style.width = pct + '%';
+                        row.children[2].innerText = pct.toFixed(1) + '%';
+                    }
+                }
+            });
+            document.getElementById('totalCurrent').innerText = totalCur.toLocaleString();
+            document.getElementById('totalRemaining').innerText = (totalCap - totalCur).toLocaleString();
+            document.getElementById('totalOccupancy').innerText = totalCap > 0 ? ((totalCur / totalCap) * 100).toFixed(1) + '%' : '0%';
         }
 
         async function syncToCloud() {
@@ -192,6 +257,7 @@
                     const toast = document.getElementById('toast');
                     toast.classList.add('show');
                     setTimeout(() => toast.classList.remove('show'), 2500);
+                    renderUI(); // إعادة رسم متناسق بعد الحفظ
                 } else {
                     alert("مشكلة في استجابة السيرفر السحابي.");
                 }
@@ -200,6 +266,22 @@
             }
             document.getElementById('loading').classList.add('hide');
         }
+
+        // كود إضافي بالـ JS لمنع تكبير المتصفح عند الضغط المزدوج على أجهزة iOS وأندرويد
+        document.addEventListener('data-id', function (event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            let now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
 
         fetchLiveFields();
     </script>
